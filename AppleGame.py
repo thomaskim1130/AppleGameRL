@@ -4,7 +4,7 @@ from gymnasium import spaces
 import pygame
 import time
 
-from agents.random_agent   import RandomAgent
+from agents.random_agent import RandomAgent
 # from agents.dqn_agent      import DQNAgent
 # from agents.reinforce_agent import REINFORCEAgent
 
@@ -256,8 +256,7 @@ class AppleGameEnv(gym.Env):
         reward, valid = self.game.make_selection(x1, y1, x2, y2)
         
         # Update time (assume 1 second per step)
-        if valid:
-            self.game.update_time(1)
+        self.game.update_time(0.1)
         
         # Adjust reward for RL
         if not valid:
@@ -287,6 +286,25 @@ class AppleGameEnv(gym.Env):
     
     def close(self):
         if self.visualizer:
+            font = pygame.font.Font(None, 72)
+            text = font.render("Game Over!", True, (0, 0, 0))
+            text_rect = text.get_rect(center=(self.visualizer.width // 2, self.visualizer.height // 2))
+            self.visualizer.screen.blit(text, text_rect)
+            
+            # Show final score
+            score_font = pygame.font.Font(None, 48)
+            score_text = score_font.render(f"Final Score: {self.game.score}", True, (0, 0, 0))
+            score_rect = score_text.get_rect(center=(self.visualizer.width // 2, self.visualizer.height // 2 + 50))
+            self.visualizer.screen.blit(score_text, score_rect)
+            
+            pygame.display.flip()
+            
+            # Wait for user to close the window
+            waiting = True
+            while waiting:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        waiting = False
             self.visualizer.close()
 
 def play_game(width=17, height=10, time_limit=120):
@@ -412,7 +430,7 @@ def main():
             obs = next_obs
             env.render()
             print(f"Action: {action}, Reward: {reward}, Info: {info}")
-            time.sleep(0.5)
+            # time.sleep(0.5)
 
         env.close()
 
