@@ -5,7 +5,7 @@ import pygame
 import time
 
 from agents.random_agent import RandomAgent
-# from agents.dqn_agent      import DQNAgent
+from agents.dqn_agent      import DQNAgent
 # from agents.reinforce_agent import REINFORCEAgent
 
 class AppleGame:
@@ -407,7 +407,7 @@ def main():
 
         AGENTS = {
             'random':    RandomAgent,
-            # 'dqn':       DQNAgent,
+            'dqn':       DQNAgent,
             # 'reinforce': REINFORCEAgent,
         }
 
@@ -432,6 +432,7 @@ def main():
             print(f"Action: {action}, Reward: {reward}, Info: {info}")
             # time.sleep(0.5)
 
+        agent.save('dqn_apple_game.pth')
         env.close()
 
 if __name__ == "__main__":
