@@ -5,4 +5,5 @@ python AppleGame.py \
     --height 10 \
     --mode rl \
     --agent random \
-    --time_limit 60
+    --time_limit 60 \
+    --render_mode human

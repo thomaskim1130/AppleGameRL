@@ -373,7 +373,7 @@ def main():
     parser.add_argument('--mode', choices=['play', 'rl'], default='rl', help='Play mode or RL mode')
     parser.add_argument('--agent',  choices=['random', 'dqn', 'reinforce'], default='random',
                         help='Which agent to run in RL mode')
-    parser.add_argument('--render_mode', choices=['human', 'agent'], help='Render the game')
+    parser.add_argument('--render_mode', choices=['human', 'agent'], default='human', help='Render the game')
     parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducibility')
     parser.add_argument('--time_limit', type=int, default=120, help='Time limit for the game')
     
