@@ -4,6 +4,10 @@ from gymnasium import spaces
 import pygame
 import time
 
+from agents.random_agent   import RandomAgent
+# from agents.dqn_agent      import DQNAgent
+# from agents.reinforce_agent import REINFORCEAgent
+
 class AppleGame:
     def __init__(self, width=17, height=10, time_limit=120):
         self.width = width
@@ -203,15 +207,16 @@ class PyGameVisualizer:
 class AppleGameEnv(gym.Env):
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 4}
     
-    def __init__(self, width=17, height=10, render_mode=None):
+    def __init__(self, width=17, height=10, render_mode=None, time_limit=120):
         super().__init__()
         
         self.width = width
         self.height = height
         self.render_mode = render_mode
+        self.time_limit = time_limit
         
         # Create the game
-        self.game = AppleGame(width=width, height=height)
+        self.game = AppleGame(width=width, height=height, time_limit=time_limit)
         
         # Define action space (top-left x, top-left y, rectangle width, rectangle height)
         self.action_space = spaces.MultiDiscrete([width, height, width, height])
@@ -284,9 +289,9 @@ class AppleGameEnv(gym.Env):
         if self.visualizer:
             self.visualizer.close()
 
-def play_game(width=17, height=10):
+def play_game(width=17, height=10, time_limit=120):
     # Create the game
-    game = AppleGame(width=width, height=height)
+    game = AppleGame(width=width, height=height, time_limit=time_limit)
     visualizer = PyGameVisualizer(game)
     visualizer.initialize()
     
@@ -366,27 +371,49 @@ def main():
     parser.add_argument('--width', type=int, default=17, help='Width of the grid')
     parser.add_argument('--height', type=int, default=10, help='Height of the grid')
     parser.add_argument('--mode', choices=['play', 'rl'], default='rl', help='Play mode or RL mode')
+    parser.add_argument('--agent',  choices=['random', 'dqn', 'reinforce'], default='random',
+                        help='Which agent to run in RL mode')
+    parser.add_argument('--render_mode', choices=['human', 'agent'], help='Render the game')
+    parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducibility')
+    parser.add_argument('--time_limit', type=int, default=120, help='Time limit for the game')
     
     args = parser.parse_args()
     
     if args.mode == 'play':
         # Play the game manually
-        play_game(width=args.width, height=args.height)
+        play_game(width=args.width, height=args.height, time_limit=args.time_limit)
     else:
         # RL mode demonstration
-        env = AppleGameEnv(width=args.width, height=args.height, render_mode='human')
-        print("Created RL environment. Use gym interface to interact with it.")
-        
-        # Example usage
+        # RL mode with chosen agent
+        env = AppleGameEnv(width=args.width, height=args.height, render_mode=args.render_mode, time_limit=args.time_limit)
+
+        AGENTS = {
+            'random':    RandomAgent,
+            # 'dqn':       DQNAgent,
+            # 'reinforce': REINFORCEAgent,
+        }
+
+        AgentClass = AGENTS[args.agent]
+        agent = AgentClass(env)
+        print(f"Running RL with {args.agent} agent")
+
         obs, _ = env.reset()
         done = False
         while not done:
-            action = env.action_space.sample()  # Random action
-            obs, reward, done, _, info = env.step(action)
+            action = agent.get_action(obs)
+            next_obs, reward, done, _, info = env.step(action)
+
+            # if the agent supports learning, store and update
+            if hasattr(agent, 'store_transition'):
+                agent.store_transition(obs, action, reward, next_obs, done)
+            if hasattr(agent, 'update'):
+                agent.update()
+
+            obs = next_obs
             env.render()
             print(f"Action: {action}, Reward: {reward}, Info: {info}")
-            time.sleep(0.5)  # Add delay to make it visible
-        
+            time.sleep(0.5)
+
         env.close()
 
 if __name__ == "__main__":
