@@ -58,7 +58,8 @@ class MLPQNet(nn.Module):
 
 class DQNAgent:
     """
-    DQN agent for a MultiDiscrete action space.
+    DQN agent for a MultiDiscrete action space,
+    with a replay buffer warm-up period before learning starts.
     """
     def __init__(self, env,
                  lr=1e-3,
@@ -66,6 +67,7 @@ class DQNAgent:
                  gamma=0.99,
                  buffer_size=10000,
                  batch_size=32,
+                 learning_starts=50000,
                  epsilon_start=1.0,
                  epsilon_end=0.01,
                  epsilon_decay=5000,
@@ -75,35 +77,35 @@ class DQNAgent:
         self.nvec = env.action_space.nvec.tolist()
         n_actions = int(np.sum(self.nvec))
 
-        # Replay buffer
+        # Replay buffer and warm-up threshold
         self.buffer = ReplayBuffer(buffer_size)
+        self.batch_size = batch_size
+        self.learning_starts = learning_starts
 
         # Q-networks
         flat_dim = int(np.prod(obs_shape))
         self.qnet = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
         self.target = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
-        # initial sync
         self.target.load_state_dict(self.qnet.state_dict())
 
-        # optimizer
+        # Optimizer
         self.opt = optim.AdamW(self.qnet.parameters(), lr=lr)
 
-        # hyperparams
+        # Hyperparameters
         self.gamma = gamma
-        self.batch_size = batch_size
         self.epsilon = epsilon_start
         self.eps_end = epsilon_end
         self.eps_decay = epsilon_decay
         self.target_update_freq = target_update_freq
 
-        # bookkeeping
-        self.step_count = 0
+        # Bookkeeping
+        self.step_count = 0      # counts env steps / actions
         self.action_space = env.action_space
         self.device = device
 
     def get_action(self, state):
         self.step_count += 1
-        # linear epsilon-greedy
+        # Linear epsilon decay
         self.epsilon = max(self.eps_end,
                            self.epsilon - (1.0 - self.eps_end) / self.eps_decay)
         if np.random.rand() < self.epsilon:
@@ -119,28 +121,31 @@ class DQNAgent:
         self.buffer.push((s, a, r, s2, d))
 
     def update(self):
-        # skip if not enough samples
-        if len(self.buffer) < self.batch_size:
+        # Only learn after warm-up and when enough samples
+        if self.step_count < self.learning_starts or len(self.buffer) < self.batch_size:
             return
 
-        # sample batch
+        # Sample a batch
         (states, actions, rewards, next_states, dones), _, _ = \
             self.buffer.sample(self.batch_size)
 
-        # to device
+        # Move to device
         states = states.to(self.device)
         next_states = next_states.to(self.device)
         actions = actions.to(self.device).squeeze(1)  # [B, ndims]
         rewards = rewards.to(self.device)
         dones = dones.to(self.device)
 
-        # current Q
+        # Compute current Q-values
         qvals = self.qnet(states)  # [B, sum(nvec)]
         splits = torch.split(qvals, self.nvec, dim=1)
-        q_taken = [chunk.gather(1, actions[:, i].unsqueeze(1)) for i, chunk in enumerate(splits)]
+        q_taken = [
+            chunk.gather(1, actions[:, i].unsqueeze(1))
+            for i, chunk in enumerate(splits)
+        ]
         current_q = torch.cat(q_taken, dim=1).sum(dim=1)  # [B]
 
-        # target Q
+        # Compute target Q-values
         with torch.no_grad():
             next_qvals = self.target(next_states)
             next_splits = torch.split(next_qvals, self.nvec, dim=1)
@@ -148,13 +153,13 @@ class DQNAgent:
             max_next = torch.stack(max_next, dim=1).sum(dim=1)
             target_q = rewards + (1 - dones) * self.gamma * max_next
 
-        # loss & optimize
+        # Loss and optimization
         loss = nn.MSELoss()(current_q, target_q)
         self.opt.zero_grad()
         loss.backward()
         self.opt.step()
 
-        # periodic target update
+        # Periodic target network update
         if self.step_count % self.target_update_freq == 0:
             self.target.load_state_dict(self.qnet.state_dict())
 
