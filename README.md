@@ -1,15 +1,26 @@
 # Structure
 ```
 AppleGameRL/
-├── AppleGame.py
 ├── README.md
 ├── agents
-│   ├── __pycache__
-│   │   └── random_agent.cpython-311.pyc
 │   ├── dqn_agent.py
 │   └── random_agent.py
+├── apple_game_dqn.py
+├── apple_game_eval.py
+├── envs
+│   ├── AppleGame.py
+├── logs
+│   └── 20250511_093519_DQN
+│       ├── dqn_apple_game_final.pth
+│       ├── dqn_ckpt_00005000.pth
+│       ├── dqn_ckpt_00010000.pth
+│       ├── run.log
+│       └── tensorboard
+│           └── events.out.tfevents.1746923719.sangohkim-Macbook-Air.local.62517.0
+├── requirements.txt
 └── scripts
     ├── apple_game_dqn.sh
+    ├── apple_game_dqn_eval.sh
     ├── apple_game_play.sh
     └── apple_game_random.sh
 ```

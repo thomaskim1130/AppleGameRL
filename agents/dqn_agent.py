@@ -103,11 +103,11 @@ class DQNAgent:
         self.action_space = env.action_space
         self.device = device
 
-    def get_action(self, state):
+    def get_action(self, state, is_training=True):
         self.step_count += 1
-        # Linear epsilon decay
-        self.epsilon = max(self.eps_end,
-                           self.epsilon - (1.0 - self.eps_end) / self.eps_decay)
+        # Exponential epsilon decay
+        if is_training:
+            self.epsilon *= (1.0 - (1.0 - self.eps_end) / self.eps_decay)
         if np.random.rand() < self.epsilon:
             return self.action_space.sample()
         with torch.no_grad():
