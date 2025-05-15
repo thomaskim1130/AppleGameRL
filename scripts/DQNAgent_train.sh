@@ -7,10 +7,10 @@ python DQNAgent.py --train \
   --time_limit 120 \
   --seed 42 \
   --episodes 1000 \
-  --patience 50 \
+  --patience 100 \
   --min_delta 1e-3 \
-  --learning_starts 20000 \
-  --eps_decay 1000000 \
+  --learning_starts 1000 \
+  --eps_decay 10000 \
   --target_update_steps 500 \
   --save_freq 100 \
   --ckpt_path "" \

@@ -6,7 +6,7 @@ python DQNAgent.py --eval \
   --render_mode human \
   --time_limit 120 \
   --seed 42 \
-  --ckpt_path /Users/sangohkim/ksodev/cs377/Project/AppleGameRL/logs/20250514_160322_DQN/dqn_final.pth \
+  --ckpt_path /Users/sangohkim/ksodev/cs377/Project/AppleGameRL/logs/20250514_232339_DQN/dqn_ep0100.pth \
   --episodes 10 \
   --eval_episodes 10 \
   --lr 0.001 \

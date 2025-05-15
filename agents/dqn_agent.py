@@ -56,6 +56,28 @@ class MLPQNet(nn.Module):
         return self.net(x)
 
 
+class ConvQNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64 * input_dim[0] * input_dim[1], 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, output_dim),
+            nn.Tanh()
+        )
+    
+    def forward(self, x):
+        x = x.unsqueeze(1)
+        return self.net(x)
+
+
 class DQNAgent:
     """
     DQN agent for a MultiDiscrete action space,
@@ -84,8 +106,10 @@ class DQNAgent:
 
         # Q-networks
         flat_dim = int(np.prod(obs_shape))
-        self.qnet = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
-        self.target = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
+        # self.qnet = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
+        # self.target = MLPQNet(flat_dim, hidden_dim, n_actions).to(device)
+        self.qnet = ConvQNet(obs_shape, hidden_dim, n_actions).to(device)
+        self.target = ConvQNet(obs_shape, hidden_dim, n_actions).to(device)
         self.target.load_state_dict(self.qnet.state_dict())
 
         # Optimizer
