@@ -91,6 +91,17 @@ class AppleGame:
             self.time_remaining = 0
             self.game_over = True
 
+    def get_feasible_actions(self):
+        feasible = []
+        for x1 in range(self.width):
+            for y1 in range(self.height):
+                for x2 in range(x1, self.width):
+                    for y2 in range(y1, self.height):
+                        if self.get_rectangle_sum(x1, y1, x2, y2) == 10:
+                            rect_width = x2 - x1 + 1
+                            rect_height = y2 - y1 + 1
+                            feasible.append((x1, y1, rect_width, rect_height))
+        return feasible
 
 class PyGameVisualizer:
     def __init__(self, game, cell_size=50):
@@ -199,49 +210,77 @@ class PyGameVisualizer:
             pygame.quit()
             self.initialized = False
 
-
 class AppleGameEnv(gym.Env):
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 4}
     
-    def __init__(self, width=17, height=10, render_mode=None):
+    def __init__(self, width=17, height=10, render_mode=None, max_actions=1000):
         super().__init__()
         
         self.width = width
         self.height = height
         self.render_mode = render_mode
+        self.max_actions = max_actions
         
         # Create the game
         self.game = AppleGame(width=width, height=height)
         
-        # Define action space (top-left x, top-left y, rectangle width, rectangle height)
-        self.action_space = spaces.MultiDiscrete([width, height, width, height])
+        # Define action space
+        self.action_space = spaces.Discrete(1)  # Default to avoid issues
         
-        # Define observation space (grid of apples)
+        # Define observation space
         self.observation_space = spaces.Box(low=0, high=9, shape=(height, width), dtype=np.int32)
         
+        # Initialize feasible actions
+        self.feasible_actions = []
+
         # Create visualizer if needed
         self.visualizer = None
         if render_mode == 'human':
             self.visualizer = PyGameVisualizer(self.game)
-    
+
     def reset(self, seed=None, options=None):
         # Reset the game
         observation = self.game.reset()
+        
+        # Get feasible actions
+        self.feasible_actions = self.game.get_feasible_actions()
+        self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
+        print(f"Reset: feasible_actions_length={len(self.feasible_actions)}")
         
         # Reset the renderer
         if self.visualizer:
             self.visualizer.close()
             self.visualizer = PyGameVisualizer(self.game)
         
-        return observation, {}
+        return observation, {'feasible_actions': self.feasible_actions}
     
-    def step(self, action):
-        # Parse action
-        x1, y1, rect_width, rect_height = action
+    def step(self, action_idx):
+        print(f"Step: action_idx={action_idx}, feasible_actions_length={len(self.feasible_actions)}")
         
-        # Ensure width and height are at least 1
-        rect_width = max(1, rect_width)
-        rect_height = max(1, rect_height)
+        # Update action space before checking feasible actions
+        self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
+        
+        # Handle no feasible actions
+        if not self.feasible_actions:
+            reward = -0.1
+            observation = self.game.grid.copy()
+            done = True
+            info = {
+                'score': self.game.score,
+                'time_remaining': self.game.time_remaining,
+                'valid_selection': False,
+                'feasible_actions': self.feasible_actions
+            }
+            print("Step: No feasible actions, terminating")
+            return observation, reward, done, False, info
+        
+        # Validate action index
+        if action_idx >= len(self.feasible_actions):
+            print(f"Warning: action_idx {action_idx} exceeds feasible_actions length {len(self.feasible_actions)}, clamping to 0")
+            action_idx = 0
+        
+        # Get action tuple
+        x1, y1, rect_width, rect_height = self.feasible_actions[action_idx]
         
         # Calculate bottom-right coordinates
         x2 = min(x1 + rect_width - 1, self.width - 1)
@@ -250,15 +289,11 @@ class AppleGameEnv(gym.Env):
         # Make selection
         reward, valid = self.game.make_selection(x1, y1, x2, y2)
         
-        # Update time (assume 1 second per step)
+        # Update time
         if valid:
             self.game.update_time(1)
         
-        # Adjust reward for RL
-        if not valid:
-            reward = -0.1  # Penalty for invalid selection
-        
-        # Small penalty for each step to encourage faster solving
+        # Apply time penalty
         reward -= 0.01
         
         # Get observation
@@ -267,11 +302,17 @@ class AppleGameEnv(gym.Env):
         # Check if game is over
         done = self.game.game_over
         
+        # Update feasible actions
+        self.feasible_actions = self.game.get_feasible_actions()
+        self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
+        print(f"Step end: feasible_actions_length={len(self.feasible_actions)}")
+        
         # Additional info
         info = {
             'score': self.game.score,
             'time_remaining': self.game.time_remaining,
-            'valid_selection': valid
+            'valid_selection': valid,
+            'feasible_actions': self.feasible_actions
         }
         
         return observation, reward, done, False, info
@@ -283,7 +324,7 @@ class AppleGameEnv(gym.Env):
     def close(self):
         if self.visualizer:
             self.visualizer.close()
-
+            
 def play_game(width=17, height=10):
     # Create the game
     game = AppleGame(width=width, height=height)
@@ -378,7 +419,7 @@ def main():
         print("Created RL environment. Use gym interface to interact with it.")
         
         # Example usage
-        obs, _ = env.reset()
+        obs, info = env.reset()
         done = False
         while not done:
             action = env.action_space.sample()  # Random action
