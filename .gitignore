@@ -1,0 +1,6 @@
+runs/
+logs/
+
+*.sh
+
+__pycache__/

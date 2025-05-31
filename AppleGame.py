@@ -245,7 +245,7 @@ class AppleGameEnv(gym.Env):
         # Get feasible actions
         self.feasible_actions = self.game.get_feasible_actions()
         self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
-        print(f"Reset: feasible_actions_length={len(self.feasible_actions)}")
+        # print(f"Reset: feasible_actions_length={len(self.feasible_actions)}")
         
         # Reset the renderer
         if self.visualizer:
@@ -255,7 +255,7 @@ class AppleGameEnv(gym.Env):
         return observation, {'feasible_actions': self.feasible_actions}
     
     def step(self, action_idx):
-        print(f"Step: action_idx={action_idx}, feasible_actions_length={len(self.feasible_actions)}")
+        # print(f"Step: action_idx={action_idx}, feasible_actions_length={len(self.feasible_actions)}")
         
         # Update action space before checking feasible actions
         self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
@@ -305,7 +305,7 @@ class AppleGameEnv(gym.Env):
         # Update feasible actions
         self.feasible_actions = self.game.get_feasible_actions()
         self.action_space = spaces.Discrete(len(self.feasible_actions) if self.feasible_actions else 1)
-        print(f"Step end: feasible_actions_length={len(self.feasible_actions)}")
+        # print(f"Step end: feasible_actions_length={len(self.feasible_actions)}")
         
         # Additional info
         info = {
