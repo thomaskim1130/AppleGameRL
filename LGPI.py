@@ -158,6 +158,7 @@ def call_openai(
     # 해당 호출의 비용 계산
     cost_this_call = (input_tokens / 1_000_000) * INPUT_COST_PER_M + (output_tokens / 1_000_000) * OUTPUT_COST_PER_M
     cum_cost += cost_this_call
+    print(f"API call cost: ${cost_this_call:.4f} USD (Input: {input_tokens}, Output: {output_tokens})")
 
     # 누적 비용이 한도를 초과하면 예외 발생
     if cum_cost > COST_LIMIT:
@@ -251,6 +252,7 @@ class LanguageGPIAgent:
                     temperature=0.7,
                     max_tokens=256
                 )
+                print(f"COST: ${cum_cost:4f} | Variation {v+1}/{self.K} for action {idx}: {g2_resp.get('LVF_Estimate', 'N/A')[:70]}...")
                 variation_evals.append(g2_resp)
 
             list_of_evals_json = json.dumps(variation_evals, ensure_ascii=False, indent=2)
@@ -265,6 +267,7 @@ class LanguageGPIAgent:
                 temperature=0.7,
                 max_tokens=256
             )
+            print(f"COST: ${cum_cost:4f} | Aggregated LVF for action {idx}: {g1_resp.get('Final_LVF', 'N/A')[:70]}...")
             action_value_list.append({
                 "action_index": idx,
                 "LVF": g1_resp.get("Final_LVF", ""),
@@ -320,6 +323,7 @@ class LanguageGPIAgent:
             temperature=0.7,
             max_tokens=256
         )
+        print(f"COST: ${cum_cost:4f} | Selected best action index: {i_resp.get('Best_Action_Index', 0)}")
 
         best_idx = i_resp.get("Best_Action_Index", 0)
         if not isinstance(best_idx, int) or best_idx < 0 or best_idx >= len(feasible_actions):
@@ -348,6 +352,7 @@ class LanguageGPIAgent:
                 break
 
             # 1) 행동 값 추정
+            print('Estimating action values...')
             action_value_list = self.estimate_action_value(state, feasible_actions)
 
             pbar.set_postfix(
@@ -359,6 +364,7 @@ class LanguageGPIAgent:
             )
 
             # 2) 최적 행동 선택
+            print('Selecting best action...')
             best_action_idx = self.select_best_action(state, feasible_actions, action_value_list)
 
             pbar.set_postfix(
